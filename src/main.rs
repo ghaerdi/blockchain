@@ -7,14 +7,16 @@ struct HasheableDataBlock {
     index: u64,
     data: String,
     timestamp: u64,
+    nonce: u32,
 }
 
 impl HasheableDataBlock {
-    fn new(index: u64, data: String, timestamp: u64) -> Self {
+    fn new(index: u64, data: String, timestamp: u64, nonce: u32) -> Self {
         HasheableDataBlock {
             index,
             data,
             timestamp,
+            nonce,
         }
     }
 }
@@ -26,6 +28,7 @@ struct Block {
     timestamp: u64,
     hash: String,
     previous_hash: String,
+    nonce: u32,
 }
 
 impl Block {
@@ -34,8 +37,11 @@ impl Block {
             .duration_since(time::UNIX_EPOCH)
             .unwrap()
             .as_secs();
-        let hash =
-            Self::calculate_hash(HasheableDataBlock::new(index, data.to_string(), timestamp));
+
+        let mut hdb = HasheableDataBlock::new(index, data.to_string(), timestamp, 0);
+
+        let hash = Self::mine(&mut hdb, 9);
+        println!("{}", hash);
 
         Block {
             index,
@@ -43,6 +49,7 @@ impl Block {
             timestamp,
             hash,
             previous_hash: previous_hash.to_string(),
+            nonce: hdb.nonce,
         }
     }
 
@@ -50,6 +57,16 @@ impl Block {
         let mut hasher = DefaultHasher::new();
         data.hash(&mut hasher);
         hasher.finish().to_string()
+    }
+
+    pub fn mine(data: &mut HasheableDataBlock, difficulty: usize) -> String {
+        loop {
+            let hash = Self::calculate_hash(&data);
+            if hash.starts_with(&format!("{}", "1".repeat(difficulty))) {
+                return hash;
+            }
+            data.nonce += 1;
+        }
     }
 }
 
@@ -106,25 +123,25 @@ impl Blockchain {
 
     fn check_hash(&self, current: &Block, with: &Block) -> IsValidResult {
         let hash = Block::calculate_hash(HasheableDataBlock::new(
-                with.index,
-                with.data.clone(),
-                with.timestamp,
+            with.index,
+            with.data.clone(),
+            with.timestamp,
+            with.nonce,
         ));
 
         if current.hash == with.hash {
             let check_hash = current.hash != hash;
             if check_hash {
-                return IsValidResult{ ok: false, hash };
+                return IsValidResult { ok: false, hash };
             }
         } else {
             let check_hash = current.previous_hash != hash;
             if check_hash {
-                return IsValidResult{ ok: false, hash };
+                return IsValidResult { ok: false, hash };
             }
-
         }
 
-        return IsValidResult{ ok: true, hash };
+        return IsValidResult { ok: true, hash };
     }
 }
 
@@ -135,6 +152,6 @@ fn main() {
 
     blockchain.chain[0].data = "Third Block".to_string();
 
+    println!("{:#?}", blockchain);
     println!("is valid: {}", blockchain.is_valid());
-
 }
