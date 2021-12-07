@@ -4,16 +4,14 @@ use std::time;
 
 #[derive(Hash)]
 struct HasheableDataBlock {
-    index: u64,
     data: String,
     timestamp: u64,
     nonce: u32,
 }
 
 impl HasheableDataBlock {
-    fn new(index: u64, data: String, timestamp: u64, nonce: u32) -> Self {
+    fn new(data: String, timestamp: u64, nonce: u32) -> Self {
         HasheableDataBlock {
-            index,
             data,
             timestamp,
             nonce,
@@ -23,7 +21,6 @@ impl HasheableDataBlock {
 
 #[derive(Debug)]
 struct Block {
-    index: u64,
     data: String,
     timestamp: u64,
     hash: String,
@@ -32,24 +29,18 @@ struct Block {
 }
 
 impl Block {
-    pub fn new(index: u64, data: &str, previous_hash: String) -> Block {
+    pub fn new(data: &str, previous_hash: String) -> Block {
         let timestamp = time::SystemTime::now()
             .duration_since(time::UNIX_EPOCH)
             .unwrap()
             .as_secs();
 
-        let mut hdb = HasheableDataBlock::new(index, data.to_string(), timestamp, 0);
-
-        let hash = Self::mine(&mut hdb, 9);
-        println!("{}", hash);
-
         Block {
-            index,
             data: data.to_string(),
             timestamp,
-            hash,
-            previous_hash: previous_hash.to_string(),
-            nonce: hdb.nonce,
+            hash: "0".to_string(),
+            previous_hash,
+            nonce: 0,
         }
     }
 
@@ -59,20 +50,20 @@ impl Block {
         hasher.finish().to_string()
     }
 
-    pub fn mine(data: &mut HasheableDataBlock, difficulty: usize) -> String {
+    pub fn mine(data: &mut Self, difficulty: usize) {
         loop {
-            let hash = Self::calculate_hash(&data);
+            let hash = Self::calculate_hash(HasheableDataBlock::new(
+                data.data.clone(),
+                data.timestamp,
+                data.nonce,
+            ));
             if hash.starts_with(&format!("{}", "1".repeat(difficulty))) {
-                return hash;
+                data.hash = hash;
+                break;
             }
             data.nonce += 1;
         }
     }
-}
-
-#[derive(Debug)]
-struct Blockchain {
-    chain: Vec<Block>,
 }
 
 struct IsValidResult {
@@ -80,23 +71,35 @@ struct IsValidResult {
     hash: String,
 }
 
-impl Blockchain {
-    pub fn new() -> Blockchain {
-        let mut chain = Vec::new();
-        chain.push(Self::genesis());
+#[derive(Debug)]
+struct Blockchain {
+    chain: Vec<Block>,
+    difficulty: usize,
+}
 
-        Blockchain { chain }
+impl Blockchain {
+    pub fn new(difficulty: usize) -> Blockchain {
+        let mut chain = Vec::new();
+        chain.push(Self::genesis(difficulty));
+
+        Blockchain { chain, difficulty }
     }
-    fn genesis() -> Block {
-        Block::new(0, "Genesis Block", "0".to_string())
+
+    fn genesis(difficulty: usize) -> Block {
+        let mut genesis = Block::new("Genesis Block", "0".to_string());
+        Block::mine(&mut genesis, difficulty);
+        return genesis;
     }
+
     pub fn add_block(&mut self, data: &str) {
         let last_block = self.chain.last().unwrap();
-        let index = last_block.index + 1;
         let previous_hash = last_block.hash.clone();
+        let mut new_block = Block::new(data, previous_hash);
+        Block::mine(&mut new_block, self.difficulty);
 
-        self.chain.push(Block::new(index, data, previous_hash));
+        self.chain.push(new_block);
     }
+
     pub fn is_valid(&mut self) -> bool {
         let mut index = 1;
 
@@ -123,7 +126,6 @@ impl Blockchain {
 
     fn check_hash(&self, current: &Block, with: &Block) -> IsValidResult {
         let hash = Block::calculate_hash(HasheableDataBlock::new(
-            with.index,
             with.data.clone(),
             with.timestamp,
             with.nonce,
@@ -146,11 +148,11 @@ impl Blockchain {
 }
 
 fn main() {
-    let mut blockchain = Blockchain::new();
+    let mut blockchain = Blockchain::new(6);
     blockchain.add_block("First Block");
     blockchain.add_block("Second Block");
 
-    blockchain.chain[0].data = "Third Block".to_string();
+    // blockchain.chain[0].data = "Third Block".to_string();
 
     println!("{:#?}", blockchain);
     println!("is valid: {}", blockchain.is_valid());
