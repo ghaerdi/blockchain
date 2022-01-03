@@ -148,12 +148,12 @@ impl Blockchain {
 }
 
 fn main() {
-    let mut blockchain = Blockchain::new(6);
+    let mut blockchain = Blockchain::new(8);
     blockchain.add_block("First Block");
     blockchain.add_block("Second Block");
 
     // blockchain.chain[0].data = "Third Block".to_string();
 
-    println!("{:#?}", blockchain);
     println!("is valid: {}", blockchain.is_valid());
+    println!("{:#?}", blockchain);
 }
