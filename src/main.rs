@@ -57,7 +57,7 @@ impl Block {
                 data.timestamp,
                 data.nonce,
             ));
-            if hash.starts_with(&format!("{}", "1".repeat(difficulty))) {
+            if hash.starts_with(&"1".repeat(difficulty)) {
                 data.hash = hash;
                 break;
             }
@@ -79,8 +79,7 @@ struct Blockchain {
 
 impl Blockchain {
     pub fn new(difficulty: usize) -> Blockchain {
-        let mut chain = Vec::new();
-        chain.push(Self::genesis(difficulty));
+        let chain = vec![Self::genesis(difficulty)];
 
         Blockchain { chain, difficulty }
     }
@@ -88,7 +87,7 @@ impl Blockchain {
     fn genesis(difficulty: usize) -> Block {
         let mut genesis = Block::new("Genesis Block", "0".to_string());
         Block::mine(&mut genesis, difficulty);
-        return genesis;
+        genesis
     }
 
     pub fn add_block(&mut self, data: &str) {
@@ -107,13 +106,13 @@ impl Blockchain {
             let current = &self.chain[index];
             let previous = &self.chain[index - 1];
 
-            let check_previous = self.check_hash(&current, &previous);
+            let check_previous = self.check_hash(current, previous);
             if !check_previous.ok {
                 self.chain[index - 1].hash = check_previous.hash;
                 return false;
             }
 
-            let check_current = self.check_hash(&current, &current);
+            let check_current = self.check_hash(current, current);
             if !check_current.ok {
                 self.chain[index].hash = check_current.hash;
                 return false;
@@ -121,7 +120,7 @@ impl Blockchain {
 
             index += 1;
         }
-        return true;
+        true
     }
 
     fn check_hash(&self, current: &Block, with: &Block) -> IsValidResult {
@@ -143,7 +142,7 @@ impl Blockchain {
             }
         }
 
-        return IsValidResult { ok: true, hash };
+        IsValidResult { ok: true, hash }
     }
 }
 
